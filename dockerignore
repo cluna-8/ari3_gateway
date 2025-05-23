@@ -1,0 +1,11 @@
+node_modules
+npm-debug.log
+logs
+.git
+.gitignore
+*.md
+docker-compose.yml
+init
+init.sql
+utils
+DB

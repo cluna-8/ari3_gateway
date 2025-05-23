@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TRIAGE CHAT</title>
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .header {
+            background-color: #0078d4;
+            color: white;
+            padding: 16px;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        
+        #webchat {
+            height: calc(100% - 70px);
+            width: 100%;
+            box-sizing: border-box;
+            margin: 0 auto;
+            max-width: 500px;
+            border: 1px solid #DDD;
+            border-radius: 5px;
+            background-color: white;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        .container {
+            height: calc(100% - 65px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 10px;
+        }
+        
+        .loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+        }
+        
+        .spinner {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #0078d4;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1.5s linear infinite;
+            margin-bottom: 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        #error-message {
+            display: none;
+            color: #d43900;
+            background-color: #ffdfd9;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 20px;
+            text-align: center;
+        }
+        
+        /* Estilos para la interfaz del WebChat */
+        .webchat__bubble {
+            border-radius: 8px !important;
+        }
+        
+        .webchat__bubble--from-bot {
+            background-color: #EFF6FC !important;
+        }
+        
+        .webchat__bubble--from-user {
+            background-color: #DCF2F8 !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Triage vini Health</h1>
+    </div>
+    
+    <div class="container">
+        <div id="webchat">
+            <div class="loading">
+                <div class="spinner"></div>
+                <p>Cargando el chat médico...</p>
+            </div>
+        </div>
+    </div>
+    
+    <div id="error-message">
+        <p>Hubo un problema al conectar con el bot. Por favor intente nuevamente más tarde.</p>
+        <button onclick="location.reload()">Reintentar</button>
+    </div>
+    
+    <!-- Script para Bot Framework WebChat -->
+    <script src="https://cdn.botframework.com/botframework-webchat/latest/webchat.js"></script>
+    
+    <script>
+        (async function() {
+            // Intenta obtener un token DirectLine desde nuestro servidor
+            try {
+                const response = await fetch('/api/direct-token');
+                
+                // Si hay un error en la respuesta del servidor
+                if (!response.ok) {
+                    throw new Error('Error al obtener el token DirectLine');
+                }
+                
+                const { token } = await response.json();
+                
+                // Configuración del estilo del WebChat
+                const styleOptions = {
+                    bubbleBackground: '#EFF6FC',
+                    bubbleFromUserBackground: '#DCF2F8',
+                    bubbleBorderRadius: 8,
+                    
+                    // Avatar del bot (imagen o iniciales)
+                    botAvatarInitials: 'HB',
+                    botAvatarImage: 'https://learn.microsoft.com/en-us/training/achievements/create-bots-azure-health-bot.svg',
+                    
+                    // Avatar del usuario
+                    userAvatarInitials: 'TÚ',
+                    
+                    // Colores y fuentes
+                    accent: '#0078d4',
+                    backgroundColor: '#FFFFFF',
+                    primaryFont: '"Segoe UI", Tahoma, sans-serif',
+                    
+                    // Tamaños y espaciados
+                    bubbleMinWidth: 200,
+                    bubbleMaxWidth: 350,
+                    
+                    // Otros estilos
+                    hideUploadButton: true
+                };
+                
+                // Crear conexión DirectLine con el token
+                const directLine = window.WebChat.createDirectLine({ token });
+                
+                // Renderizar el WebChat
+                window.WebChat.renderWebChat({
+                    directLine: directLine,
+                    styleOptions: styleOptions,
+                    locale: 'es-ES',
+                    userID: 'user-' + Date.now().toString(16),
+                    username: 'Usuario'
+                }, document.getElementById('webchat'));
+                
+                // Enfocar en la caja de texto de entrada
+                document.querySelector('.webchat__send-box-text-box__input').focus();
+                
+            } catch (error) {
+                console.error('Error al inicializar el WebChat:', error);
+                
+                // Mostrar mensaje de error
+                document.querySelector('.loading').style.display = 'none';
+                document.getElementById('error-message').style.display = 'block';
+                
+                // Intentar enfoque alternativo usando iframe directo
+                tryIframeAlternative();
+            }
+        })();
+        
+        // Función para intentar el enfoque de iframe como respaldo
+        function tryIframeAlternative() {
+            console.log('Intentando enfoque alternativo con iframe directo...');
+            
+            const webchatDiv = document.getElementById('webchat');
+            webchatDiv.innerHTML = '';
+            
+            const iframe = document.createElement('iframe');
+            iframe.src = 'https://healthcare.bot.azure.com/webchat/{{ bot_name }}';
+            iframe.style.width = '100%';
+            iframe.style.height = '100%';
+            iframe.style.border = 'none';
+            
+            webchatDiv.appendChild(iframe);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,885 @@
+Documentación Detallada de Endpoints para COMPLETE-GATEWAY
+Basado en mi análisis de la documentación y el código fuente proporcionado, he preparado una documentación detallada de todos los endpoints disponibles en el sistema COMPLETE-GATEWAY.
+Índice
+
+Endpoints de Autenticación
+Endpoints de API
+Endpoints de Administración
+Endpoints de Agentes Específicos
+Archivos en Uso vs Archivos a Eliminar
+
+1. Endpoints de Autenticación
+1.1 Login con JWT
+Endpoint: POST /auth/login
+Descripción: Inicia sesión y obtiene un token JWT.
+Headers:
+
+Content-Type: application/json
+
+Body:
+json{
+  "username": "admin",
+  "password": "admin123"
+}
+Respuesta Exitosa (200):
+json{
+  "message": "Login exitoso",
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "user": {
+    "id": 1,
+    "username": "admin",
+    "email": "admin@example.com",
+    "role": "admin"
+  }
+}
+Posibles Errores:
+
+400: Faltan parámetros obligatorios
+401: Credenciales inválidas
+500: Error interno del servidor
+
+1.2 Validar API Key
+Endpoint: GET /auth/validate-key
+Descripción: Valida una API key y devuelve información asociada.
+Headers:
+
+X-API-Key: sk-1234567890abcdef
+
+Respuesta Exitosa (200):
+json{
+  "message": "API key válida",
+  "user": "username",
+  "userId": 1,
+  "role": "admin",
+  "credito": 100.00,
+  "permissions": [
+    {
+      "agente": "Asistente General",
+      "modelo": "gpt-3.5-turbo"
+    }
+  ]
+}
+Posibles Errores:
+
+401: API key inválida o no proporcionada
+403: Sin crédito disponible
+500: Error interno del servidor
+
+1.3 Obtener Mis API Keys
+Endpoint: GET /auth/my-keys
+Descripción: Obtiene todas las API keys del usuario autenticado.
+Headers:
+
+Authorization: Bearer [JWT_TOKEN]
+
+Respuesta Exitosa (200):
+json{
+  "keys": [
+    {
+      "id": 1,
+      "key_value": "sk-12345...",
+      "nombre": "API Key Principal",
+      "activo": true,
+      "credito_disponible": 50.00,
+      "fecha_creacion": "2025-05-19 08:30:00"
+    }
+  ]
+}
+Posibles Errores:
+
+401: Token no proporcionado o inválido
+500: Error interno del servidor
+
+2. Endpoints de API
+2.1 Obtener Opciones Disponibles
+Endpoint: GET /api/options
+Descripción: Obtiene las opciones disponibles para el cliente autenticado.
+Headers:
+
+X-API-Key: sk-1234567890abcdef
+
+Respuesta Exitosa (200):
+json{
+  "clientName": "usuario1",
+  "clientId": 2,
+  "availableAgents": ["Asistente General", "Traductor"],
+  "availableTypes": ["seguro", "no_seguro"],
+  "availableModels": {
+    "seguro": ["gpt-3.5-turbo"],
+    "no_seguro": ["claude-2"]
+  },
+  "credito_disponible": 150.00
+}
+Posibles Errores:
+
+401: API key inválida o no proporcionada
+500: Error interno del servidor
+
+2.2 Realizar Consulta General
+Endpoint: POST /api/query
+Descripción: Envía una consulta a un agente específico usando un modelo determinado.
+Headers:
+
+X-API-Key: sk-1234567890abcdef
+Content-Type: application/json
+
+Body:
+json{
+  "metadata": {
+    "agente": "Asistente General",
+    "type": "seguro",
+    "model": "gpt-3.5-turbo"
+  },
+  "prompt": "¿Cuál es la capital de Francia?"
+}
+Respuesta Exitosa (200):
+json{
+  "message": "La capital de Francia es París.",
+  "metadata": {
+    "agente": "Asistente General",
+    "type": "seguro",
+    "model": "gpt-3.5-turbo",
+    "prompt": "¿Cuál es la capital de Francia?"
+  },
+  "usage": {
+    "input_tokens": 12,
+    "output_tokens": 8,
+    "total_tokens": 20,
+    "input_cost": "0.000006",
+    "output_cost": "0.000012",
+    "total_cost": "0.000018"
+  }
+}
+Posibles Errores:
+
+400: Datos incompletos o inválidos
+401: API key inválida o no proporcionada
+403: Sin permisos para este agente/modelo o sin crédito
+404: Agente o modelo no encontrado
+500: Error interno del servidor
+
+2.3 Consulta al Agente de Triage
+2.3.1 Iniciar Servicio de Triage
+Endpoint: POST /api/query
+Headers:
+
+X-API-Key: sk-1234567890abcdef
+Content-Type: application/json
+
+Body:
+json{
+  "metadata": {
+    "agente": "agente_triaje",
+    "type": "seguro"
+  },
+  "action": "start"
+}
+Respuesta Exitosa (200):
+json{
+  "status": "success",
+  "message": "Servicio de triage iniciado correctamente",
+  "url": "http://localhost:5000",
+  "running": true
+}
+2.3.2 Detener Servicio de Triage
+Endpoint: POST /api/query
+Headers:
+
+X-API-Key: sk-1234567890abcdef
+Content-Type: application/json
+
+Body:
+json{
+  "metadata": {
+    "agente": "agente_triaje",
+    "type": "seguro"
+  },
+  "action": "stop"
+}
+Respuesta Exitosa (200):
+json{
+  "status": "success",
+  "message": "Servicio de triage detenido correctamente",
+  "running": false
+}
+2.3.3 Obtener Información del Servicio
+Endpoint: POST /api/query
+Headers:
+
+X-API-Key: sk-1234567890abcdef
+Content-Type: application/json
+
+Body:
+json{
+  "metadata": {
+    "agente": "agente_triaje",
+    "type": "seguro"
+  },
+  "action": "info"
+}
+Respuesta Exitosa (200):
+json{
+  "status": "success",
+  "triageAppRunning": true,
+  "triageAppUrl": "http://localhost:5000",
+  "activeSessions": 2,
+  "sessionCount": 10,
+  "uptime": 3600,
+  "config": {
+    "port": 5000,
+    "domain": "localhost",
+    "botName": "ar1-healthcare-w1qo2sx"
+  }
+}
+2.3.4 Realizar Consulta Médica
+Endpoint: POST /api/query
+Headers:
+
+X-API-Key: sk-1234567890abcdef
+Content-Type: application/json
+
+Body:
+json{
+  "metadata": {
+    "agente": "agente_triaje",
+    "type": "seguro"
+  },
+  "action": "query",
+  "prompt": "Tengo dolor de cabeza y fiebre desde hace 2 días"
+}
+Respuesta Exitosa (200):
+json{
+  "status": "success",
+  "message": "Para realizar una evaluación de tus síntomas...",
+  "redirectUrl": "http://localhost:5000",
+  "sessionId": "session_1747644528975_a2b3c"
+}
+2.3.5 Actualizar Configuración del Triage
+Endpoint: POST /api/query
+Headers:
+
+X-API-Key: sk-1234567890abcdef
+Content-Type: application/json
+
+Body:
+json{
+  "metadata": {
+    "agente": "agente_triaje",
+    "type": "seguro"
+  },
+  "action": "config",
+  "config": {
+    "port": 8080,
+    "domain": "triage.example.com",
+    "botName": "nuevo-bot-triage"
+  }
+}
+Respuesta Exitosa (200):
+json{
+  "status": "success",
+  "message": "Configuración de triage actualizada",
+  "config": {
+    "port": 8080,
+    "domain": "triage.example.com",
+    "botName": "nuevo-bot-triage"
+  }
+}
+3. Endpoints de Administración
+3.1 Gestión de Usuarios
+3.1.1 Listar Usuarios
+Endpoint: GET /admin/usuarios
+Descripción: Obtiene la lista de todos los usuarios.
+Headers:
+
+Authorization: Bearer [JWT_TOKEN] o X-API-Key: sk-1234567890abcdef
+
+Respuesta Exitosa (200):
+json{
+  "usuarios": [
+    {
+      "id": 1,
+      "username": "admin",
+      "email": "admin@example.com",
+      "activo": 1,
+      "rol": "admin",
+      "fecha_creacion": "2025-05-19 07:30:29"
+    }
+  ]
+}
+Posibles Errores:
+
+401: No autenticado
+403: No autorizado (rol no admin)
+500: Error interno del servidor
+
+3.1.2 Crear Usuario
+Endpoint: POST /admin/usuarios
+Descripción: Crea un nuevo usuario en el sistema.
+Headers:
+
+Authorization: Bearer [JWT_TOKEN]
+Content-Type: application/json
+
+Body:
+json{
+  "username": "nuevo_usuario",
+  "password": "pass123",
+  "email": "nuevo@example.com",
+  "role_id": 2
+}
+Respuesta Exitosa (201):
+json{
+  "message": "Usuario creado correctamente",
+  "id": 2,
+  "username": "nuevo_usuario",
+  "email": "nuevo@example.com",
+  "role_id": 2
+}
+Posibles Errores:
+
+400: Datos incompletos o inválidos
+401: No autenticado
+403: No autorizado
+500: Error interno del servidor
+
+3.1.3 Obtener Usuario
+Endpoint: GET /admin/usuarios/:id
+Descripción: Obtiene información detallada de un usuario específico.
+Headers:
+
+Authorization: Bearer [JWT_TOKEN]
+
+Respuesta Exitosa (200):
+json{
+  "usuario": {
+    "id": 2,
+    "username": "usuario1",
+    "email": "usuario1@example.com",
+    "activo": 1,
+    "role_id": 2,
+    "rol": "cliente",
+    "fecha_creacion": "2025-05-19 08:30:00"
+  },
+  "api_keys": [
+    {
+      "id": 1,
+      "key_value": "sk-12345...",
+      "nombre": "API Key Principal",
+      "activo": 1,
+      "credito_disponible": 50.00,
+      "fecha_creacion": "2025-05-19 08:35:00"
+    }
+  ]
+}
+Posibles Errores:
+
+401: No autenticado
+403: No autorizado
+404: Usuario no encontrado
+500: Error interno del servidor
+
+3.1.4 Actualizar Usuario
+Endpoint: PUT /admin/usuarios/:id
+Descripción: Actualiza la información de un usuario específico.
+Headers:
+
+Authorization: Bearer [JWT_TOKEN]
+Content-Type: application/json
+
+Body:
+json{
+  "username": "usuario_modificado",
+  "email": "modificado@example.com",
+  "role_id": 2,
+  "activo": true,
+  "password": "nueva_pass123"
+}
+Respuesta Exitosa (200):
+json{
+  "message": "Usuario actualizado correctamente",
+  "id": 2
+}
+Posibles Errores:
+
+400: No se especificaron campos para actualizar
+401: No autenticado
+403: No autorizado
+404: Usuario no encontrado
+500: Error interno del servidor
+
+3.1.5 Eliminar Usuario (Desactivar)
+Endpoint: DELETE /admin/usuarios/:id
+Descripción: Desactiva un usuario en el sistema (no lo elimina físicamente).
+Headers:
+
+Authorization: Bearer [JWT_TOKEN]
+
+Respuesta Exitosa (200):
+json{
+  "message": "Usuario desactivado correctamente",
+  "id": 2
+}
+Posibles Errores:
+
+400: No puedes eliminar tu propio usuario
+401: No autenticado
+403: No autorizado
+404: Usuario no encontrado
+500: Error interno del servidor
+
+3.2 Gestión de API Keys
+3.2.1 Crear API Key para Usuario
+Endpoint: POST /admin/usuarios/:id/keys
+Descripción: Crea una nueva API key para un usuario específico.
+Headers:
+
+Authorization: Bearer [JWT_TOKEN]
+Content-Type: application/json
+
+Body:
+json{
+  "nombre": "API Key de Test",
+  "credito_inicial": 100.00
+}
+Respuesta Exitosa (201):
+json{
+  "message": "API key creada correctamente",
+  "id": 3,
+  "key": "sk-abcdef1234567890",
+  "nombre": "API Key de Test",
+  "credito_disponible": 100.00
+}
+Posibles Errores:
+
+400: Datos incompletos
+401: No autenticado
+403: No autorizado
+404: Usuario no encontrado
+500: Error interno del servidor
+
+3.2.2 Listar Todas las API Keys
+Endpoint: GET /admin/keys
+Descripción: Obtiene la lista de todas las API keys en el sistema.
+Headers:
+
+Authorization: Bearer [JWT_TOKEN]
+
+Respuesta Exitosa (200):
+json{
+  "keys": [
+    {
+      "id": 1,
+      "key_value": "sk-12345...",
+      "nombre": "API Key Principal",
+      "activo": 1,
+      "credito_disponible": 50.00,
+      "usuario_id": 2,
+      "username": "usuario1",
+      "fecha_creacion": "2025-05-19 08:35:00"
+    }
+  ]
+}
+Posibles Errores:
+
+401: No autenticado
+403: No autorizado
+500: Error interno del servidor
+
+3.2.3 Obtener API Key Específica
+Endpoint: GET /admin/keys/:id
+Descripción: Obtiene información detallada de una API key específica.
+Headers:
+
+Authorization: Bearer [JWT_TOKEN]
+
+Respuesta Exitosa (200):
+json{
+  "key": {
+    "id": 1,
+    "key_value": "sk-12345...",
+    "nombre": "API Key Principal",
+    "activo": 1,
+    "credito_disponible": 50.00,
+    "usuario_id": 2,
+    "username": "usuario1",
+    "fecha_creacion": "2025-05-19 08:35:00",
+    "fecha_actualizacion": "2025-05-19 10:15:00"
+  },
+  "usos": [
+    {
+      "id": 1,
+      "fecha": "2025-05-19 09:10:25",
+      "agente": "Asistente General",
+      "modelo": "gpt-3.5-turbo",
+      "tokens_entrada": 12,
+      "tokens_salida": 8,
+      "costo_total": 0.000018
+    }
+  ]
+}
+Posibles Errores:
+
+401: No autenticado
+403: No autorizado
+404: API key no encontrada
+500: Error interno del servidor
+
+3.2.4 Actualizar API Key
+Endpoint: PUT /admin/keys/:id
+Descripción: Actualiza la información de una API key específica.
+Headers:
+
+Authorization: Bearer [JWT_TOKEN]
+Content-Type: application/json
+
+Body:
+json{
+  "nombre": "API Key Actualizada",
+  "activo": true
+}
+Respuesta Exitosa (200):
+json{
+  "message": "API key actualizada correctamente",
+  "id": 1
+}
+Posibles Errores:
+
+400: No se especificaron campos para actualizar
+401: No autenticado
+403: No autorizado
+404: API key no encontrada
+500: Error interno del servidor
+
+3.2.5 Añadir Crédito a API Key
+Endpoint: POST /admin/keys/:id/credito
+Descripción: Añade crédito a una API key específica.
+Headers:
+
+Authorization: Bearer [JWT_TOKEN]
+Content-Type: application/json
+
+Body:
+json{
+  "monto": 50.00
+}
+Respuesta Exitosa (200):
+json{
+  "message": "Crédito añadido correctamente",
+  "id": 3,
+  "monto_añadido": 50.00,
+  "credito_actual": 150.00
+}
+Posibles Errores:
+
+400: Monto inválido
+401: No autenticado
+403: No autorizado
+404: API key no encontrada
+500: Error interno del servidor
+
+3.3 Gestión de Permisos
+3.3.1 Ver Permisos de Usuario
+Endpoint: GET /admin/permisos/:userId
+Descripción: Obtiene los permisos asignados a un usuario específico.
+Headers:
+
+Authorization: Bearer [JWT_TOKEN]
+
+Respuesta Exitosa (200):
+json{
+  "usuario": {
+    "id": 2,
+    "username": "usuario1"
+  },
+  "permisos": [
+    {
+      "id": 3,
+      "agente_id": 1,
+      "agente": "Asistente General",
+      "modelo_id": 1,
+      "modelo": "gpt-3.5-turbo",
+      "habilitado": 1,
+      "fecha_creacion": "2025-05-19 08:45:22"
+    }
+  ],
+  "agentes_disponibles": [
+    {"id": 1, "nombre": "Asistente General"},
+    {"id": 2, "nombre": "Asistente Financiero"},
+    {"id": 3, "nombre": "Traductor"}
+  ],
+  "modelos_disponibles": [
+    {"id": 1, "nombre": "gpt-3.5-turbo", "proveedor": "OpenAI"},
+    {"id": 2, "nombre": "gpt-4", "proveedor": "OpenAI"},
+    {"id": 3, "nombre": "claude-2", "proveedor": "Anthropic"}
+  ]
+}
+Posibles Errores:
+
+401: No autenticado
+403: No autorizado
+404: Usuario no encontrado
+500: Error interno del servidor
+
+3.3.2 Asignar Permiso
+Endpoint: POST /admin/permisos
+Descripción: Asigna un nuevo permiso a un usuario.
+Headers:
+
+Authorization: Bearer [JWT_TOKEN]
+Content-Type: application/json
+
+Body:
+json{
+  "usuario_id": 2,
+  "agente_id": 1,
+  "modelo_id": 1,
+  "habilitado": true
+}
+Respuesta Exitosa (201):
+json{
+  "message": "Permiso asignado correctamente",
+  "usuario_id": 2,
+  "agente_id": 1,
+  "modelo_id": 1,
+  "habilitado": true
+}
+Posibles Errores:
+
+400: Datos incompletos
+401: No autenticado
+403: No autorizado
+404: Usuario, agente o modelo no encontrado
+500: Error interno del servidor
+
+3.3.3 Eliminar Permiso
+Endpoint: DELETE /admin/permisos/:id
+Descripción: Elimina un permiso específico.
+Headers:
+
+Authorization: Bearer [JWT_TOKEN]
+
+Respuesta Exitosa (200):
+json{
+  "message": "Permiso eliminado correctamente",
+  "id": 3
+}
+Posibles Errores:
+
+401: No autenticado
+403: No autorizado
+404: Permiso no encontrado
+500: Error interno del servidor
+
+3.4 Estadísticas de Uso
+3.4.1 Ver Estadísticas de Uso
+Endpoint: GET /admin/uso
+Descripción: Obtiene estadísticas detalladas de uso del sistema.
+Headers:
+
+Authorization: Bearer [JWT_TOKEN]
+
+Parámetros Query:
+
+desde: Fecha de inicio (opcional)
+hasta: Fecha de fin (opcional)
+usuario_id: Filtrar por usuario (opcional)
+agente_id: Filtrar por agente (opcional)
+modelo_id: Filtrar por modelo (opcional)
+limit: Límite de registros (opcional, default: 100)
+
+Respuesta Exitosa (200):
+json{
+  "registros": [
+    {
+      "id": 1,
+      "fecha": "2025-05-19 09:10:25",
+      "username": "usuario1",
+      "nombre_key": "API Key Principal",
+      "agente": "Asistente General",
+      "modelo": "gpt-3.5-turbo",
+      "tokens_entrada": 12,
+      "tokens_salida": 8,
+      "costo_entrada": 0.000006,
+      "costo_salida": 0.000012,
+      "costo_total": 0.000018
+    }
+  ],
+  "estadisticas": [
+    {
+      "fecha": "2025-05-19",
+      "total_tokens_entrada": 1250,
+      "total_tokens_salida": 850,
+      "total_costo": 0.325
+    }
+  ],
+  "totales": {
+    "tokens_entrada": 1250,
+    "tokens_salida": 850,
+    "costo_total": 0.325
+  },
+  "count": 1
+}
+Posibles Errores:
+
+401: No autenticado
+403: No autorizado
+500: Error interno del servidor
+
+3.4.2 Obtener Datos para Dashboard
+Endpoint: GET /admin/dashboard
+Descripción: Obtiene datos resumidos para mostrar en un dashboard.
+Headers:
+
+Authorization: Bearer [JWT_TOKEN]
+
+Respuesta Exitosa (200):
+json{
+  "usuarios": {
+    "total": 10,
+    "activos": 8
+  },
+  "api_keys": {
+    "total": 15,
+    "activas": 12,
+    "credito_total": 750.50
+  },
+  "solicitudes_24h": {
+    "total": 250,
+    "tokens_entrada": 25000,
+    "tokens_salida": 18000,
+    "costo_total": 8.75
+  },
+  "solicitudes_por_modelo": [
+    {
+      "nombre": "gpt-3.5-turbo",
+      "total": 180,
+      "costo_total": 5.20
+    },
+    {
+      "nombre": "gpt-4",
+      "total": 70,
+      "costo_total": 3.55
+    }
+  ],
+  "solicitudes_por_agente": [
+    {
+      "nombre": "Asistente General",
+      "total": 150
+    },
+    {
+      "nombre": "Traductor",
+      "total": 100
+    }
+  ],
+  "solicitudes_por_dia": [
+    {
+      "fecha": "2025-05-19",
+      "total": 250,
+      "tokens_totales": 43000,
+      "costo_total": 8.75
+    }
+  ]
+}
+Posibles Errores:
+
+401: No autenticado
+403: No autorizado
+500: Error interno del servidor
+
+4. Endpoints de Agentes Específicos
+4.1 Agente de Triage
+4.1.1 Interfaz Web del Agente de Triage
+Endpoint: GET /agents/triage/
+Descripción: Interfaz web para gestionar el servicio de triage médico.
+4.1.2 Procesar Mensaje de Triage
+Endpoint: POST /agents/triage/api/message
+Descripción: Procesa un mensaje para el agente de triage.
+Headers:
+
+Content-Type: application/json
+
+Body:
+json{
+  "message": "Tengo dolor de cabeza y fiebre desde hace 2 días",
+  "userId": "user123",
+  "temperature": 0.3
+}
+Respuesta Exitosa (200):
+json{
+  "answer": "Para realizar una evaluación de tus síntomas, te redirigiremos a nuestro sistema de triage. Por favor, haz clic en el enlace para continuar: http://localhost:5000",
+  "redirectUrl": "http://localhost:5000",
+  "sessionId": "session_1747644528975_a2b3c"
+}
+4.1.3 Obtener Información del Triage
+Endpoint: GET /agents/triage/api/info
+Descripción: Obtiene información sobre el estado del servicio de triage.
+Respuesta Exitosa (200):
+json{
+  "triageAppRunning": true,
+  "triageAppUrl": "http://localhost:5000",
+  "activeSessions": 2,
+  "sessionCount": 10,
+  "uptime": 3600,
+  "config": {
+    "port": 5000,
+    "domain": "localhost",
+    "botName": "ar1-healthcare-w1qo2sx"
+  }
+}
+4.1.4 Iniciar Servicio de Triage
+Endpoint: POST /agents/triage/api/start
+Descripción: Inicia el servicio de triage médico.
+Respuesta Exitosa (200):
+json{
+  "success": true,
+  "message": "Servicio de triage iniciado correctamente",
+  "url": "http://localhost:5000"
+}
+4.1.5 Detener Servicio de Triage
+Endpoint: POST /agents/triage/api/stop
+Descripción: Detiene el servicio de triage médico.
+Respuesta Exitosa (200):
+json{
+  "success": true,
+  "message": "Servicio de triage detenido correctamente"
+}
+4.1.6 Actualizar Configuración de Triage
+Endpoint: POST /agents/triage/api/config
+Descripción: Actualiza la configuración del servicio de triage.
+Headers:
+
+Content-Type: application/json
+
+Body:
+json{
+  "port": 8080,
+  "domain": "triage.example.com",
+  "botName": "nuevo-bot-triage",
+  "webchatSecret": "nuevo-secret-opcional"
+}
+Respuesta Exitosa (200):
+json{
+  "success": true,
+  "message": "Configuración de triage actualizada",
+  "config": {
+    "port": 8080,
+    "domain": "triage.example.com",
+    "botName": "nuevo-bot-triage"
+  }
+}
+4.1.7 Finalizar Sesión de Triage
+Endpoint: POST /agents/triage/api/session/end
+Descripción: Finaliza una sesión de triage específica.
+Headers:
+
+Content-Type: application/json
+
+Body:
+json{
+  "sessionId": "session_1747644528975_a2b3c"
+}
+Respuesta Exitosa (200):
+json{
+  "success": true,
+  "sessionId": "session_1747644528975_a2b3c"
+}

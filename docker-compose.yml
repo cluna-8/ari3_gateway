@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  api-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: complete-gateway-api
+    restart: always
+    ports:
+      - "3000:3000"   # Main API port
+      - "5000-5010:5000-5010"   # Port range for triage service (launched on-demand)
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DB_HOST=141.227.128.125  # Your existing MySQL host
+      - DB_PORT=3306
+      - DB_USER=gateway_user
+      - DB_PASSWORD=gateway_password
+      - DB_NAME=complete_gateway
+      - JWT_SECRET=secreto-api-gateway-hardcodeado  # Consider changing in production
+    volumes:
+      - api_logs:/app/logs
+      - ./models:/app/models  # Mount models directory for easier config updates
+      - ./agents:/app/agents  # Mount agents directory to allow writing triage_config.json
+    networks:
+      - gateway-network
+
+volumes:
+  api_logs:
+    driver: local
+
+networks:
+  gateway-network:
+    driver: bridge
